@@ -1,10 +1,9 @@
-#![feature(custom_attribute)]
-
 extern crate actix_web;
 extern crate actix_helloworld;
 extern crate config;
 extern crate log;
-extern crate simplelog;
+extern crate log4rs;
+
 
 #[macro_use]
 extern crate lazy_static;
@@ -14,7 +13,7 @@ use actix_web::middleware::Logger;
 
 use actix_helloworld::settings::Settings;
 use log::info;
-use simplelog::*;
+//use simplelog::*;
 
 #[derive(Clone)]
 struct GlobalSetting(Settings);
@@ -54,11 +53,7 @@ impl UseSetting for EchoServerNameServiceImpl {
 impl EchoServerNameService for EchoServerNameServiceImpl {}
 
 fn main() {
-    CombinedLogger::init(
-        vec![
-            TermLogger::new(LevelFilter::Info, Config::default()).unwrap()
-        ]
-    ).unwrap();
+    log4rs::init_file("config/log4rs.yaml", Default::default()).unwrap();
 
     let server_setting = global_settings.0.server.clone();
     info!("server setting {:?}", global_settings.0);
