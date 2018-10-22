@@ -11,7 +11,7 @@ root:
   level: info
   appenders:
     - stdout
-    - requests
+#    - requests
 #loggers:
 #  main:
 #    level: info

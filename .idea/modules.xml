@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/actix-helloworld.iml" filepath="$PROJECT_DIR$/actix-helloworld.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/actix-helloworld-client.iml" filepath="$PROJECT_DIR$/.idea/actix-helloworld-client.iml" />
     </modules>
   </component>
 </project>

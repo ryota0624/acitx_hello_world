@@ -1,0 +1,5 @@
+2018-10-22T11:49:55.852327+09:00 - server setting Settings { server_name: "jon", mode: Dev, server: ServerSettings { timeout: 100, workers: 10, backlog: 10 } }
+2018-10-22T11:49:55.852784+09:00 - start server application...
+2018-10-22T11:49:55.862812+09:00 - Starting 10 http workers
+2018-10-22T11:49:55.862936+09:00 - Starting server on http://0.0.0.0:8080
+2018-10-22T11:50:04.331496+09:00 - 127.0.0.1:60039 [22/Oct/2018:11:50:04 +0900] "GET /name HTTP/1.1" 200 14 "-" "curl/7.54.0" 0.000434

@@ -1,6 +1,7 @@
 server_name: jon
-mode: dev
+mode: $MODE
 server:
   backlog: 10
   workers: 10
   timeout: 100
+hello_server_host: $HELLO_SERVER_HOST

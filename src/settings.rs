@@ -1,4 +1,4 @@
-use config::{ConfigError, Config, File};
+use config::{ConfigError, Config, File, Environment};
 use serde;
 use serde::de::Deserializer;
 use serde::Deserialize;
@@ -22,7 +22,7 @@ impl DeserializeWith for ServerMode {
         match s.as_ref() {
             "dev" => Ok(ServerMode::Dev),
             "production" => Ok(ServerMode::Production),
-            _ => Err(serde::de::Error::custom("not available pattern"))
+            _ => Err(serde::de::Error::custom(format!("not available pattern -> {}", s)))
         }
     }
 }
@@ -33,8 +33,8 @@ pub struct Settings {
     pub server_name: String,
     #[serde(deserialize_with="ServerMode::deserialize_with")]
     pub mode: ServerMode,
-    pub server: ServerSettings
-
+    pub server: ServerSettings,
+    pub hello_server_host: String
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -46,8 +46,34 @@ pub struct ServerSettings {
 
 impl Settings {
     pub fn new() -> Result<Self, ConfigError> {
-        let mut s = Config::new();
-        s.merge(File::with_name("config/settings"))?;
-        s.try_into()
+        let env_s = Environment::new();
+        let file_s =File::with_name("config/settings");
+        let mut conf = Config::new();
+        conf
+            .merge(file_s)?
+            .merge(env_s)?;
+
+        conf.try_into()
+    }
+}
+
+#[derive(Clone)]
+pub struct GlobalSetting(pub Settings);
+
+lazy_static! {
+    pub static ref global_settings: GlobalSetting = {
+        GlobalSetting(Settings::new().expect("fail create settings"))
+    };
+}
+
+pub trait UseSetting {
+    fn settings(&self) -> Settings;
+}
+
+pub struct SettingProvider;
+
+impl UseSetting for SettingProvider {
+    fn settings(&self) -> Settings {
+        global_settings.0.clone()
     }
 }

@@ -1,68 +1,49 @@
 extern crate actix_web;
-extern crate actix_helloworld;
+extern crate actix_helloworld_client;
 extern crate config;
 extern crate log;
 extern crate log4rs;
 
-
-#[macro_use]
-extern crate lazy_static;
-
 use actix_web::{http, server, App, HttpRequest};
 use actix_web::middleware::Logger;
 
-use actix_helloworld::settings::Settings;
+use actix_helloworld_client::settings::*;
+use actix_helloworld_client::{hello_client};
+use actix_helloworld_client::hello_client::{UseClient, Client};
+
 use log::info;
-//use simplelog::*;
 
-#[derive(Clone)]
-struct GlobalSetting(Settings);
+struct ClientHostService;
 
-lazy_static! {
-    static ref global_settings: GlobalSetting = {
-        GlobalSetting(Settings::new().expect("fail create settings"))
-    };
+impl hello_client::ClientProvider for ClientHostService {
 }
 
-trait UseSetting {
-    fn settings(&self) -> Settings;
-}
-
-struct SettingProvider;
-
-impl UseSetting for SettingProvider {
-    fn settings(&self) -> Settings {
-        global_settings.0.clone()
+impl hello_client::UseClient for ClientHostService {
+    fn client(&self) -> Box<Client> {
+        (self as &hello_client::ClientProvider).client()
     }
 }
 
-trait EchoServerNameService: UseSetting {
-    fn echo(&self) -> String {
-        format!("my name is {}", self.settings().server_name)
+
+impl ClientHostService {
+    fn run(&self) -> String {
+        self.client().get_server_name()
     }
 }
-
-struct EchoServerNameServiceImpl;
-
-impl UseSetting for EchoServerNameServiceImpl {
-    fn settings(&self) -> Settings {
-        SettingProvider.settings()
-    }
-}
-
-impl EchoServerNameService for EchoServerNameServiceImpl {}
 
 fn main() {
     log4rs::init_file("config/log4rs.yaml", Default::default()).unwrap();
 
-    let server_setting = global_settings.0.server.clone();
-    info!("server setting {:?}", global_settings.0);
+    let server_setting = SettingProvider.settings().server;
+    info!("setting {:?}",  SettingProvider.settings());
 
     let app_server = server::new(
         || App::new()
             .middleware(Logger::default())
             .route("/health", http::Method::GET, |_: HttpRequest| "OK")
-            .route("/name", http::Method::GET, |_: HttpRequest| EchoServerNameServiceImpl.echo())
+            .route("/server_host", http::Method::GET, |_: HttpRequest|
+                ClientHostService.run() )
+
     )
         .workers(server_setting.workers)
         .backlog(server_setting.backlog)

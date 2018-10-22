@@ -1,5 +1,5 @@
 [package]
-name = "actix-helloworld"
+name = "actix-helloworld-client"
 version = "0.1.0"
 authors = ["ryota suzuki <ryota@fringe81.com>"]
 
