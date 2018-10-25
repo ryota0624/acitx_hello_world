@@ -8,13 +8,17 @@ appenders:
     encoder:
       pattern: "{d} - {m}{n}"
 root:
-  level: info
+  level: debug
   appenders:
     - stdout
-    - requests
-#loggers:
-#  main:
-#    level: info
-#    appenders:
-#      - requests
-#    additive: false
+loggers:
+  tokio_core:
+    level: info
+    appenders:
+      - stdout
+    additive: false
+  tokio_reactor:
+    level: info
+    appenders:
+      - stdout
+    additive: false
