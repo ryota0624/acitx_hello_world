@@ -29,12 +29,12 @@ lazy_static! {
         GlobalSetting(Settings::new().expect("fail create settings"))
     };
 
-    static ref global_counter: Arc<GlobalCounter> = {
-        Arc::new(GlobalCounter(Count(0)))
+    static ref global_counter: GlobalCounter = {
+        GlobalCounter(Arc::new(Mutex::new(Count(0))))
     };
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Count(i64);
 
 impl Count {
@@ -44,24 +44,61 @@ impl Count {
 }
 
 trait Counter {
-    fn get_count(&self) -> Count;
+    fn get_count(&self) -> i64;
+    fn increment(self);
+    fn next_count(&self) -> Count {
+        let current_count = self.get_count();
+        Count(current_count + Self::increment_step_value())
+    }
+
+    fn increment_step_value() -> i64;
 }
 
 #[derive(Clone)]
-struct StateCounter(Count);
+struct StateCounter(Arc<Mutex<Count>>);
 
 impl Counter for StateCounter {
-    fn get_count(&self) -> Count {
-        self.0.clone()
+    fn get_count(&self) -> i64 {
+        let count = self.0.clone();
+        let value = count.lock().unwrap().clone();
+        value.int_value()
     }
+
+    fn increment(self) {
+        let next_count = self.next_count();
+        match self.0.try_lock() {
+            Ok(ref mut m_count) => {
+                **m_count = next_count;
+            }
+            Err(reason) => {
+                error!("increment error {}", reason);
+            }
+        }
+    }
+
+    fn increment_step_value() -> i64 {
+        1
+    }
+
 }
 
 #[derive(Clone)]
-struct GlobalCounter(Count);
+struct GlobalCounter(Arc<Mutex<Count>>);
 
 impl Counter for GlobalCounter {
-    fn get_count(&self) -> Count {
-        self.0.clone()
+    fn get_count(&self) -> i64 {
+        let count = self.0.clone();
+        let value = count.lock().unwrap().clone();
+        value.int_value()
+    }
+
+    fn increment(self) {
+        let next_count = self.next_count();
+        *self.0.lock().unwrap() = next_count;
+    }
+
+    fn increment_step_value() -> i64 {
+        200
     }
 }
 
@@ -104,7 +141,7 @@ struct CounterResponse {
     global_count: i64,
 }
 
-type ServerState = Arc<Mutex<StateCounter>>;
+type ServerState = StateCounter;
 
 fn main() {
     log4rs::init_file("config/log4rs.yaml", Default::default()).unwrap();
@@ -115,7 +152,7 @@ fn main() {
 
     let sys = actix::System::new(setting.server_name);
 
-    let state = Arc::new(Mutex::new(StateCounter(Count(0))));
+    let state = StateCounter(Arc::new(Mutex::new(Count(0))));
     let http_server_addr = HttpServer::new(
         move ||
             App::with_state(state.clone())
@@ -123,10 +160,10 @@ fn main() {
                 .route("/health", http::Method::GET, |_: HttpRequest<ServerState>| "OK")
                 .route("/count", http::Method::GET, |req: HttpRequest<ServerState>| {
                     let state_count =
-                        req.state().lock().unwrap().get_count().int_value();
+                        req.state().get_count();
 
                     let global_count =
-                        global_counter.get_count().int_value();
+                        global_counter.get_count();
 
                     Json(CounterResponse {
                         state_count,
@@ -134,18 +171,16 @@ fn main() {
                     })
                 })
                 .route("/count/up", http::Method::POST, |req: HttpRequest<ServerState>| {
-                    let current_state_count =
-                        req.state().lock().unwrap().get_count().int_value();
+                    let state = req.state();
+                    state.clone().increment();
+                    global_counter.clone().increment();
 
-                    let updated_state_count = StateCounter(Count(current_state_count + 1));
-
-                    *(req.state().lock().unwrap()) = updated_state_count.clone();
-
+                    let state_count = state.get_count();
                     let global_count =
-                        global_counter.get_count().int_value();
+                        global_counter.get_count();
 
                     Json(CounterResponse {
-                        state_count: updated_state_count.get_count().int_value(),
+                        state_count,
                         global_count,
                     })
                 })
