@@ -1,0 +1,10 @@
+server_name: jon
+mode: dev
+server:
+  backlog: 10
+  workers: 10
+  timeout: 100
+  port: 9000
+hello_server:
+  host: 0.0.0.0
+  port: 8080

@@ -1,0 +1,17 @@
+[package]
+name = "actix-helloworld"
+version = "0.1.0"
+authors = ["ryota suzuki <ryota@fringe81.com>"]
+
+[dependencies]
+actix = "0.5"
+actix-web = "0.6"
+futures = "0.1"
+serde = "1"
+serde_derive = "1"
+tokio-threadpool = "0.1"
+config = "0.9"
+lazy_static = "*"
+log = "*"
+log4rs = "*"
+uuid = { version = "0.7", features = ["v4"] }

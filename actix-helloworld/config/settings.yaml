@@ -1,0 +1,6 @@
+server_name: jon
+mode: dev
+server:
+  backlog: 10
+  workers: 3
+  timeout: 100

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: actix-hello-client
+spec:
+  containers:
+    - name: actix-hello-client-pod
+      image: asia.gcr.io/handson-1061/hello-actix-client:0.0.1
+      ports:
+      - containerPort: 9000      
+  imagePullSecrets:
+    - name: gcrasia

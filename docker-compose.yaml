@@ -1,0 +1,12 @@
+server:
+  image: asia.gcr.io/handson-1061/hello-actix:0.0.2
+client:
+  image: asia.gcr.io/handson-1061/hello-actix-client:0.0.1
+  links:
+    - server:hello-server
+  ports:
+    - "3000:3000"
+  environment:
+    HELLO_SERVER__PORT: 8080
+    HELLO_SERVER__HOST: hello-server
+    SERVER__PORT: 3000
