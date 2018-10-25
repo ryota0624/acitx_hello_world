@@ -17,7 +17,7 @@ use actix_web::middleware::Logger;
 use actix_helloworld::settings::Settings;
 use log::*;
 use std::thread;
-use std::sync::{Arc};
+use std::sync::{Arc, Mutex};
 use std::io;
 use futures::future::Future;
 
@@ -29,16 +29,16 @@ lazy_static! {
         GlobalSetting(Settings::new().expect("fail create settings"))
     };
 
-    static ref global_counter: GlobalCounter = {
-          GlobalCounter(Count(Arc::new(1)))
+    static ref global_counter: Arc<GlobalCounter> = {
+        Arc::new(GlobalCounter(Count(0)))
     };
 }
 
 #[derive(Clone)]
-struct Count(Arc<i64>);
+struct Count(i64);
 
 impl Count {
-    fn int_value(self) -> Arc<i64> {
+    fn int_value(self) -> i64 {
         self.0.clone()
     }
 }
@@ -46,14 +46,16 @@ impl Count {
 trait Counter {
     fn get_count(&self) -> Count;
 }
+
 #[derive(Clone)]
 struct StateCounter(Count);
 
 impl Counter for StateCounter {
     fn get_count(&self) -> Count {
-      self.0.clone()
+        self.0.clone()
     }
 }
+
 #[derive(Clone)]
 struct GlobalCounter(Count);
 
@@ -102,6 +104,8 @@ struct CounterResponse {
     global_count: i64,
 }
 
+type ServerState = Arc<Mutex<StateCounter>>;
+
 fn main() {
     log4rs::init_file("config/log4rs.yaml", Default::default()).unwrap();
 
@@ -111,16 +115,15 @@ fn main() {
 
     let sys = actix::System::new(setting.server_name);
 
-    let state = StateCounter(Count(Arc::new(0)));
+    let state = Arc::new(Mutex::new(StateCounter(Count(0))));
     let http_server_addr = HttpServer::new(
         move ||
             App::with_state(state.clone())
                 .middleware(Logger::default())
-                .route("/health", http::Method::GET, |_: HttpRequest<StateCounter>| "OK")
-                .route("/count", http::Method::GET, |req: HttpRequest<StateCounter>| {
-
+                .route("/health", http::Method::GET, |_: HttpRequest<ServerState>| "OK")
+                .route("/count", http::Method::GET, |req: HttpRequest<ServerState>| {
                     let state_count =
-                        req.state().get_count().int_value();
+                        req.state().lock().unwrap().get_count().int_value();
 
                     let global_count =
                         global_counter.get_count().int_value();
@@ -130,7 +133,23 @@ fn main() {
                         global_count,
                     })
                 })
-                .route("/name", http::Method::GET, |_: HttpRequest<StateCounter>| Json(ServerNameResponse { name: EchoServerNameServiceImpl.echo() }))
+                .route("/count/up", http::Method::POST, |req: HttpRequest<ServerState>| {
+                    let current_state_count =
+                        req.state().lock().unwrap().get_count().int_value();
+
+                    let updated_state_count = StateCounter(Count(current_state_count + 1));
+
+                    *(req.state().lock().unwrap()) = updated_state_count.clone();
+
+                    let global_count =
+                        global_counter.get_count().int_value();
+
+                    Json(CounterResponse {
+                        state_count: updated_state_count.get_count().int_value(),
+                        global_count,
+                    })
+                })
+                .route("/name", http::Method::GET, |_: HttpRequest<ServerState>| Json(ServerNameResponse { name: EchoServerNameServiceImpl.echo() }))
     ).workers(server_setting.workers)
         .backlog(server_setting.backlog)
         .keep_alive(server::KeepAlive::Timeout(server_setting.timeout))
